@@ -62,15 +62,71 @@ BufMgr::~BufMgr() {
     delete [] bufPool;
 }
 
+// ------------------------------------------------------------------------------------------------
+// Allocates a free frame using the clock algorithm; if necessary, writing a dirty page back to 
+// disk. Returns BUFFEREXCEEDED if all buffer frames are pinned, UNIXERR if the call to the I/O 
+// layer returned an error when a dirty page was being written to disk and OK otherwise.  This 
+// private method will get called by the readPage() and allocPage() methods described below.
 
+// Make sure that if the buffer frame allocated has a valid page in it, that you remove the 
+// appropriate entry from the hash table.
+// ------------------------------------------------------------------------------------------------
 const Status BufMgr::allocBuf(int & frame) 
 {
 
+    BufDesc currentFrame = bufTable[clockHand];
 
+    // looping until we find a page with refbit and pinCnt 0, or until we've confirmed buffer is 
+    // exceeded (all frames are pinned).
+    Status err = OK;
+    bool clock = true;
+    int iterations = 0;
+    while (clock && iterations < (2*numBufs)) 
+    {
+        // if this frame is removable, first set the clock to false to exit the loop
+        if (!currentFrame.refbit && currentFrame.pinCnt == 0) {
+            
+            clock = false;
 
+            // then start actual removal process
+            if (currentFrame.valid) {
 
+                int frameNo = currentFrame.frameNo;
+                int pageNo = currentFrame.pageNo;
+                File* fPtr = currentFrame.file;
 
+                // write page to disk if dirty
+                if (currentFrame.dirty) {
+                    
+                    Page* pagePtr = &bufPool[frameNo];
+                    err = fPtr->writePage(pageNo, pagePtr);
+                    if (err != 0) {
+                        return err;
+                    }
 
+                }
+
+                // remove page from hash table
+                err = hashTable->remove(fPtr, pageNo);
+                if (err != 0) {
+                    return err;
+                }
+            }
+        }
+        else {
+            advanceClock();
+        }
+    }
+
+    // return OK if loop exited because clock found and evicted a page
+    if (!clock) {
+        return err;
+    }
+
+    // else return BUFFEREXCEEDED because all pages are pinned
+    else {
+        return BUFFEREXCEEDED;
+    }
 }
 
 	
