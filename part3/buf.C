@@ -76,8 +76,15 @@ const Status BufMgr::allocBuf(int & frame)
 	
 const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
 {
-
-
+    int frameNo = -1;
+    Status status = hashTable->lookup(file, PageNo, frameNo);
+    if(status != OK) {
+        allocBuf((int&) PageNo); //this might break :( Never know if you don't test, Schrodinger's method
+        status = file->readPage(PageNo, page);
+        if(status != OK) return status;
+        
+        bufTable[PageNo].Set(file, PageNo);
+    }
 
 
 
@@ -87,22 +94,21 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
 const Status BufMgr::unPinPage(File* file, const int PageNo, 
 			       const bool dirty) 
 {
-
-
-
-
-
+    int frameNo = -1;
+    Status status = hashTable->lookup(file, PageNo, frameNo);
+    if(status != OK) 
+        return status;
+    else if(bufTable[PageNo].pinCnt == 0) 
+        return PAGENOTPINNED;
+    else {
+        bufTable[PageNo].pinCnt--;
+        bufTable[PageNo].dirty = dirty;
+        return OK;
+    }
 }
 
 const Status BufMgr::allocPage(File* file, int& pageNo, Page*& page) 
 {
-
-
-
-
-
-
-
 }
 
 const Status BufMgr::disposePage(File* file, const int pageNo) 
