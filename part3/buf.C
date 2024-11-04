@@ -163,8 +163,35 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
     }
 }
 
-const Status BufMgr::allocPage(File* file, int& pageNo, Page*& page) 
-{
+const Status BufMgr::allocPage(File* file, int& pageNo, Page*& page) {
+    // init. variables for frame index and status tracking
+    int frameIndex = -1; 
+    Status status = NOTUSED1;
+
+    // allocate a new page within the specified file
+    status = file->allocatePage(pageNo);
+    if (status == UNIXERR) {
+        return UNIXERR;
+    }
+
+    // allocate a free frame in the buffer pool
+    status = allocBuf(frameIndex);
+    if (status != OK) {
+        return status;
+    }
+
+    // insert page into hash table for easy lookup
+    status = hashTable->insert(file, pageNo, frameIndex);
+    if (status != OK) {
+        return HASHTBLERROR;
+    }
+
+    // set up buffer descriptor for the newly allocated frame
+    bufTable[frameIndex].Set(file, pageNo);
+
+    // return a pointer to the allocated buffer pool frame
+    page = &bufPool[frameIndex];
+    return OK;                   
 }
 
 const Status BufMgr::disposePage(File* file, const int pageNo) 
