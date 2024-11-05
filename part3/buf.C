@@ -135,15 +135,21 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
     int frameNo = -1;
     Status status = hashTable->lookup(file, PageNo, frameNo);
     if(status != OK) {
-        allocBuf((int&) PageNo); //this might break :( Never know if you don't test, Schrodinger's method
+        allocBuf((int&) PageNo); // might break
         status = file->readPage(PageNo, page);
-        if(status != OK) return status;
-        
-        bufTable[PageNo].Set(file, PageNo);
+
+        if(status != OK) 
+            return status;
+
+        hashTable->insert(file, PageNo, frameNo);
+        bufTable[frameNo].Set(file, PageNo); 
+
+    } else {
+        bufTable[frameNo].refbit = 1;
+        bufTable[frameNo].pinCnt++;
+        page = &bufPool[frameNo];
     }
-
-
-
+    return OK;
 }
 
 
@@ -154,11 +160,11 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
     Status status = hashTable->lookup(file, PageNo, frameNo);
     if(status != OK) 
         return status;
-    else if(bufTable[PageNo].pinCnt == 0) 
+    else if(bufTable[frameNo].pinCnt == 0) 
         return PAGENOTPINNED;
     else {
-        bufTable[PageNo].pinCnt--;
-        bufTable[PageNo].dirty = dirty;
+        bufTable[frameNo].pinCnt--; // if these segfault replace with pageNo ?
+        bufTable[frameNo].dirty = dirty;
         return OK;
     }
 }
