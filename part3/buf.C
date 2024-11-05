@@ -147,8 +147,8 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
     } else {
         bufTable[frameNo].refbit = 1;
         bufTable[frameNo].pinCnt++;
-        page = &bufPool[frameNo];
     }
+    page = &bufPool[frameNo];
     return OK;
 }
 
