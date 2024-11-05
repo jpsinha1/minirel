@@ -62,15 +62,6 @@ BufMgr::~BufMgr() {
     delete [] bufPool;
 }
 
-// ------------------------------------------------------------------------------------------------
-// Allocates a free frame using the clock algorithm; if necessary, writing a dirty page back to 
-// disk. Returns BUFFEREXCEEDED if all buffer frames are pinned, UNIXERR if the call to the I/O 
-// layer returned an error when a dirty page was being written to disk and OK otherwise.  This 
-// private method will get called by the readPage() and allocPage() methods described below.
-
-// Make sure that if the buffer frame allocated has a valid page in it, that you remove the 
-// appropriate entry from the hash table.
-// ------------------------------------------------------------------------------------------------
 const Status BufMgr::allocBuf(int & frame) 
 {
 
@@ -87,13 +78,13 @@ const Status BufMgr::allocBuf(int & frame)
         if (!currentFrame.refbit && currentFrame.pinCnt == 0) {
             
             clock = false;
+            int frameNo = currentFrame.frameNo;
+            int pageNo = currentFrame.pageNo;
+            File* fPtr = currentFrame.file;
+            frame = frameNo;
 
             // then start actual removal process
             if (currentFrame.valid) {
-
-                int frameNo = currentFrame.frameNo;
-                int pageNo = currentFrame.pageNo;
-                File* fPtr = currentFrame.file;
 
                 // write page to disk if dirty
                 if (currentFrame.dirty) {
@@ -111,10 +102,13 @@ const Status BufMgr::allocBuf(int & frame)
                 if (err != 0) {
                     return err;
                 }
+
+                
             }
         }
         else {
             advanceClock();
+            iterations += 1;
         }
     }
 
@@ -133,11 +127,13 @@ const Status BufMgr::allocBuf(int & frame)
 const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
 {
     int frameNo = -1;
-    Status status = hashTable->lookup(file, PageNo, frameNo);
+    Status status = hashTable->lookup(file, PageNo, (int&) frameNo);
     if(status != OK) {
-        allocBuf((int&) PageNo); // might break
-        status = file->readPage(PageNo, page);
+        status = allocBuf(frameNo); // might break
+        if(status != OK) 
+            return status;
 
+        status = file->readPage(PageNo, page);
         if(status != OK) 
             return status;
 
@@ -149,6 +145,9 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
         bufTable[frameNo].pinCnt++;
     }
     page = &bufPool[frameNo];
+
+    cout << frameNo << endl;
+
     return OK;
 }
 
@@ -157,7 +156,7 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
 			       const bool dirty) 
 {
     int frameNo = -1;
-    Status status = hashTable->lookup(file, PageNo, frameNo);
+    Status status = hashTable->lookup(file, PageNo, (int&) frameNo);
     if(status != OK) 
         return status;
     else if(bufTable[frameNo].pinCnt == 0) 

@@ -4,6 +4,8 @@
         "buf.C": "cpp",
         "bufHash.C": "cpp",
         "db.C": "cpp",
-        "page.C": "cpp"
+        "page.C": "cpp",
+        "testbuf.C": "cpp",
+        "iostream": "cpp"
     }
 }

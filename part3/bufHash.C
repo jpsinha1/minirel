@@ -86,6 +86,8 @@ Status BufHashTbl::lookup(const File* file, const int pageNo, int& frameNo)
     if (tmpBuc->file == file && tmpBuc->pageNo == pageNo)
     {
       frameNo = tmpBuc->frameNo; // return frameNo by reference
+      cout << file << endl;
+      cout << pageNo << endl;
       return OK;
     }
     tmpBuc = tmpBuc->next;
