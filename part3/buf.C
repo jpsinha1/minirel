@@ -3,7 +3,7 @@
 // Contains the BufMgr class and associated methods
 // Team members:
 // Benjamin Braiman: 9083302415
-// Anmol Gulati: 
+// Anmol Gulati: 9083547548
 // Jai Sinha: 
 //----------------------------------------
 
